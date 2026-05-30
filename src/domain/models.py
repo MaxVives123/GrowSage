@@ -1,8 +1,11 @@
 """Domain models — pure Python, zero external dependencies."""
 from __future__ import annotations
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pydantic import BaseModel, field_validator
+
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 # ── Domain entities ──────────────────────────────────────────────────────────
@@ -35,17 +38,32 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Enter a valid email address")
+        return v
+
     @field_validator("password")
     @classmethod
-    def password_min_length(cls, v: str) -> str:
+    def validate_password(cls, v: str) -> str:
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
+        if not v.strip():
+            raise ValueError("Password cannot be blank")
         return v
 
 
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
 
 
 class TokenResponse(BaseModel):

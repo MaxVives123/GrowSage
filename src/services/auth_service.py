@@ -24,15 +24,21 @@ class AuthService:
         self._repo = user_repo
 
     def register(self, email: str, password: str) -> User:
+        email = email.strip().lower()
         if self._repo.get_by_email(email):
-            raise ValueError(f"Email already registered: {email}")
+            raise ValueError("This email is already registered")
         return self._repo.create(email=email, hashed_password=_pwd_ctx.hash(password))
 
     def login(self, email: str, password: str) -> str:
-        """Returns a JWT access token or raises ValueError."""
+        """Returns a JWT access token or raises ValueError with a descriptive message."""
+        email = email.strip().lower()
         user = self._repo.get_by_email(email)
-        if not user or not _pwd_ctx.verify(password, user.hashed_password):
-            raise ValueError("Invalid credentials")
+        if not user:
+            raise ValueError("No account found with that email")
+        if not _pwd_ctx.verify(password, user.hashed_password):
+            raise ValueError("Incorrect password")
+        if not user.is_active:
+            raise ValueError("This account has been disabled")
         return self._issue_token(user)
 
     def get_user_from_token(self, token: str) -> User | None:

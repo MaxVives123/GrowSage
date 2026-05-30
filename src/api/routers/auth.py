@@ -19,9 +19,9 @@ def register(body: RegisterRequest, auth: AuthService = Depends(get_auth_service
 def login(body: LoginRequest, auth: AuthService = Depends(get_auth_service)):
     try:
         token = auth.login(body.email, body.password)
-    except ValueError:
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
+            detail=str(exc),  # surface descriptive message to the client
         )
     return TokenResponse(access_token=token)

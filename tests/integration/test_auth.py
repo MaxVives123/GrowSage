@@ -22,6 +22,7 @@ def test_register_duplicate_email_returns_409(client):
     client.post("/auth/register", json=payload)
     res = client.post("/auth/register", json=payload)
     assert res.status_code == 409
+    assert "already registered" in res.json()["detail"].lower()
 
 
 def test_register_short_password_returns_422(client):
@@ -30,6 +31,35 @@ def test_register_short_password_returns_422(client):
         json={"email": "bob@growsage.com", "password": "short"},
     )
     assert res.status_code == 422
+
+
+def test_register_blank_password_returns_422(client):
+    """Whitespace-only passwords are rejected."""
+    res = client.post(
+        "/auth/register",
+        json={"email": "blank@growsage.com", "password": "        "},
+    )
+    assert res.status_code == 422
+
+
+def test_register_invalid_email_returns_422(client):
+    """Malformed email addresses are rejected before hitting the DB."""
+    for bad_email in ["notanemail", "missing@dot", "@nodomain.com", "spaces @x.com"]:
+        res = client.post(
+            "/auth/register",
+            json={"email": bad_email, "password": "validpass1"},
+        )
+        assert res.status_code == 422, f"Expected 422 for email: {bad_email!r}"
+
+
+def test_register_email_is_normalized_to_lowercase(client):
+    """Emails are stored in lowercase regardless of what the user types."""
+    res = client.post(
+        "/auth/register",
+        json={"email": "MixedCase@GrowSage.COM", "password": "validpass1"},
+    )
+    assert res.status_code == 201
+    assert res.json()["email"] == "mixedcase@growsage.com"
 
 
 def test_login_returns_bearer_token(client):
@@ -49,7 +79,21 @@ def test_login_returns_bearer_token(client):
     assert len(data["access_token"].split(".")) == 3
 
 
-def test_login_wrong_password_returns_401(client):
+def test_login_is_case_insensitive(client):
+    """Logging in with uppercase email works when account was registered in lowercase."""
+    client.post(
+        "/auth/register",
+        json={"email": "casetest@growsage.com", "password": "mypassword1"},
+    )
+    res = client.post(
+        "/auth/login",
+        json={"email": "CASETEST@GROWSAGE.COM", "password": "mypassword1"},
+    )
+    assert res.status_code == 200
+    assert "access_token" in res.json()
+
+
+def test_login_wrong_password_returns_401_with_message(client):
     client.post(
         "/auth/register",
         json={"email": "dave@growsage.com", "password": "correctpass1"},
@@ -59,14 +103,16 @@ def test_login_wrong_password_returns_401(client):
         json={"email": "dave@growsage.com", "password": "wrongpassword"},
     )
     assert res.status_code == 401
+    assert "password" in res.json()["detail"].lower()
 
 
-def test_login_unknown_email_returns_401(client):
+def test_login_unknown_email_returns_401_with_message(client):
     res = client.post(
         "/auth/login",
         json={"email": "nobody@growsage.com", "password": "doesntmatter"},
     )
     assert res.status_code == 401
+    assert "account" in res.json()["detail"].lower()
 
 
 def test_health_endpoint(client):
