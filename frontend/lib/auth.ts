@@ -19,7 +19,7 @@ export function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-// ── API calls ────────────────────────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function apiRegister(email: string, password: string) {
   const res = await fetch(`${API}/auth/register`, {
@@ -40,17 +40,36 @@ export async function apiLogin(email: string, password: string): Promise<string>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   })
-  if (!res.ok) throw new Error('Invalid email or password')
-  const data = await res.json()
-  return data.access_token
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail ?? 'Invalid email or password')
+  }
+  return (await res.json()).access_token
 }
 
-export async function apiChat(question: string): Promise<{ answer: string; sources: { name: string; page: string }[] }> {
-  const res = await fetch(`${API}/chat`, {
+// ── Streaming chat ────────────────────────────────────────────────────────────
+
+export type StreamEvent =
+  | { type: 'sources'; sources: { name: string; page: string }[]; conversation_id: string }
+  | { type: 'token'; content: string }
+  | { type: 'done'; message_id: string }
+  | { type: 'error'; detail: string }
+
+export async function* apiChatStream(
+  question: string,
+  history: { role: 'user' | 'assistant'; content: string }[],
+  conversationId?: string | null,
+): AsyncGenerator<StreamEvent> {
+  const res = await fetch(`${API}/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({
+      question,
+      history,
+      conversation_id: conversationId ?? null,
+    }),
   })
+
   if (res.status === 401 || res.status === 403) {
     clearToken()
     throw new Error('SESSION_EXPIRED')
@@ -59,9 +78,69 @@ export async function apiChat(question: string): Promise<{ answer: string; sourc
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail ?? 'Daily message limit reached. Try again tomorrow.')
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail ?? `API error ${res.status}`)
+  if (!res.ok || !res.body) {
+    throw new Error(`API error ${res.status}`)
   }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.startsWith('data: ')) {
+        try {
+          yield JSON.parse(trimmed.slice(6)) as StreamEvent
+        } catch { /* skip malformed lines */ }
+      }
+    }
+  }
+}
+
+// ── Conversations ─────────────────────────────────────────────────────────────
+
+export interface ConversationSummary {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ConversationMessage {
+  id: string
+  conversation_id: string
+  role: 'user' | 'assistant'
+  content: string
+  sources: { name: string; page: string }[]
+  created_at: string
+}
+
+export async function apiGetConversations(): Promise<ConversationSummary[]> {
+  const res = await fetch(`${API}/conversations`, { headers: authHeaders() })
+  if (!res.ok) return []
   return res.json()
+}
+
+export async function apiGetConversationMessages(convId: string): Promise<ConversationMessage[]> {
+  const res = await fetch(`${API}/conversations/${convId}/messages`, { headers: authHeaders() })
+  if (!res.ok) return []
+  return res.json()
+}
+
+export async function apiDeleteConversation(convId: string): Promise<void> {
+  await fetch(`${API}/conversations/${convId}`, { method: 'DELETE', headers: authHeaders() })
+}
+
+export async function apiFeedback(messageId: string, rating: 1 | -1): Promise<void> {
+  await fetch(`${API}/conversations/messages/${messageId}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ rating }),
+  })
 }

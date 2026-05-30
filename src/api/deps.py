@@ -9,6 +9,7 @@ from src.infrastructure.chroma_store import ChromaVectorStore
 from src.infrastructure.openai_llm import OpenAILLM
 from src.services.auth_service import AuthService
 from src.services.chat_service import ChatService
+from src.services.conversation_service import ConversationService
 from src.domain.models import User
 
 _bearer = HTTPBearer()
@@ -45,6 +46,11 @@ def get_chat_service() -> ChatService:
             llm=OpenAILLM(),
         )
     return _chat_service
+
+
+def get_conv_service(db: Session = Depends(get_db)) -> ConversationService:
+    from src.infrastructure.conversation_repo import SQLConversationRepository
+    return ConversationService(SQLConversationRepository(db))
 
 
 async def get_current_user(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, field_validator
 
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -30,6 +31,25 @@ class SearchResult:
 class ChatAnswer:
     answer: str
     sources: list[SearchResult]
+
+
+@dataclass
+class Conversation:
+    id: str
+    user_id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass
+class ChatMessage:
+    id: str
+    conversation_id: str
+    role: str
+    content: str
+    sources: list
+    created_at: datetime
 
 
 # ── API schemas (Pydantic) ───────────────────────────────────────────────────
@@ -71,8 +91,15 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class HistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class ChatRequest(BaseModel):
     question: str
+    conversation_id: str | None = None
+    history: list[HistoryMessage] = []
 
     @field_validator("question")
     @classmethod
@@ -96,3 +123,30 @@ class UserDTO(BaseModel):
     id: str
     email: str
     created_at: datetime
+
+
+class ConversationDTO(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class MessageDTO(BaseModel):
+    id: str
+    conversation_id: str
+    role: str
+    content: str
+    sources: list[SourceDTO]
+    created_at: datetime
+
+
+class FeedbackRequest(BaseModel):
+    rating: int
+
+    @field_validator("rating")
+    @classmethod
+    def validate_rating(cls, v: int) -> int:
+        if v not in (1, -1):
+            raise ValueError("Rating must be 1 (helpful) or -1 (not helpful)")
+        return v

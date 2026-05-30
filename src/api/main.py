@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.routers import auth, chat
+from src.api.routers import auth, chat, conversations
 from src.infrastructure.database import make_engine, Base
 
 load_dotenv()
@@ -17,7 +17,6 @@ def _cors_origins() -> list[str]:
 
 
 def create_app(db_url: str | None = None) -> FastAPI:
-    # Ensure tables exist for the given DB URL
     engine = make_engine(db_url)
     Base.metadata.create_all(engine)
 
@@ -32,6 +31,7 @@ def create_app(db_url: str | None = None) -> FastAPI:
 
     app.include_router(auth.router)
     app.include_router(chat.router)
+    app.include_router(conversations.router)
 
     @app.get("/health", tags=["meta"])
     def health():

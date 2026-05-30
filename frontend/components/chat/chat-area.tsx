@@ -17,6 +17,7 @@ interface ChatAreaProps {
   onSend: () => void
   onNewChat: () => void
   onSuggestionClick: (suggestion: string) => void
+  onFeedback?: (messageId: string, rating: 1 | -1) => void
   messagesEndRef: RefObject<HTMLDivElement | null>
 }
 
@@ -28,18 +29,21 @@ export function ChatArea({
   onSend,
   onNewChat,
   onSuggestionClick,
-  messagesEndRef
+  onFeedback,
+  messagesEndRef,
 }: ChatAreaProps) {
   const hasMessages = messages.length > 0
+  // Show typing indicator only when waiting for the first response token
+  const showTyping = isLoading && messages[messages.length - 1]?.role === 'user'
 
   return (
     <div className="flex-1 flex flex-col bg-background min-h-0">
       {/* Top Bar - Desktop only */}
       <header className="hidden lg:flex items-center justify-between px-6 py-3 border-b border-border">
         <span className="text-sm text-muted-foreground">GrowSage</span>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onClick={onNewChat}
           className="text-primary border-primary hover:bg-primary/10"
         >
@@ -53,13 +57,14 @@ export function ChatArea({
         {hasMessages ? (
           <div className="max-w-[720px] mx-auto px-4 py-6 space-y-4">
             {messages.map((message, index) => (
-              <MessageBubble 
-                key={message.id} 
-                message={message} 
+              <MessageBubble
+                key={message.id}
+                message={message}
                 index={index}
+                onFeedback={onFeedback}
               />
             ))}
-            {isLoading && <TypingIndicator />}
+            {showTyping && <TypingIndicator />}
             <div ref={messagesEndRef} />
           </div>
         ) : (
