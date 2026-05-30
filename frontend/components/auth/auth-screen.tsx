@@ -115,6 +115,9 @@ export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
           </div>
           <h1 className="text-2xl font-bold text-[#0a1a0a]">GrowSage</h1>
           <p className="text-sm text-muted-foreground mt-1">Your AI garden expert</p>
+          <span className="mt-2 px-2.5 py-0.5 rounded-full bg-green-50 border border-green-200 text-[11px] text-green-700 font-medium">
+            Free &amp; non-profit
+          </span>
         </div>
 
         {/* Card */}
@@ -225,9 +228,14 @@ export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
           </form>
         </div>
 
-        <p className="text-xs text-center text-muted-foreground mt-6">
-          Answers grounded in FAO, INIA & USDA manuals
-        </p>
+        <div className="mt-6 space-y-1 text-center">
+          <p className="text-xs text-muted-foreground">
+            Answers grounded in public agricultural publications
+          </p>
+          <p className="text-[11px] text-muted-foreground/60">
+            FAO · USDA · INIA · Junta de Andalucía · University of Missouri and others
+          </p>
+        </div>
       </div>
     </div>
   )

@@ -3,11 +3,14 @@ import { SproutIcon } from './sprout-icon'
 import type { ConversationSummary } from '@/lib/auth'
 
 const knowledgeSources = [
-  { label: 'FAO · Seeds', indexed: true },
-  { label: 'INIA · Vegetables', indexed: true },
-  { label: 'FAO · Composting', indexed: true },
-  { label: 'USDA · Pest Control', indexed: true },
-  { label: 'BPA · Tomato Guide', indexed: true },
+  { label: 'FAO · Seed Production',   license: 'Open access' },
+  { label: 'FAO · Composting',        license: 'Open access' },
+  { label: 'INIA · Vegetables',       license: 'Open access' },
+  { label: 'USDA · Pest Management',  license: 'Public domain' },
+  { label: 'Junta Andalucía · Compost', license: 'Open access' },
+  { label: 'Univ. Missouri · Garden', license: 'Open access' },
+  { label: 'Utah State · Vegetables', license: 'Open access' },
+  { label: 'BPA · Tomato Guide',      license: 'Open access' },
 ]
 
 interface SidebarProps {
@@ -106,17 +109,15 @@ export function Sidebar({
           <h3 className="text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider mb-3">
             Knowledge base
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {knowledgeSources.map((source, index) => (
               <div
                 key={index}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sidebar-accent/30 text-sidebar-foreground text-sm"
               >
                 <FileText className="w-4 h-4 text-sidebar-foreground/60 shrink-0" />
-                <span className="flex-1 truncate">{source.label}</span>
-                {source.indexed && (
-                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse-dot" />
-                )}
+                <span className="flex-1 truncate text-xs">{source.label}</span>
+                <span className="text-[10px] text-sidebar-foreground/40 shrink-0">{source.license}</span>
               </div>
             ))}
           </div>
@@ -125,8 +126,9 @@ export function Sidebar({
 
       {/* Footer */}
       <div className="p-5 border-t border-sidebar-border space-y-3">
-        <div className="text-xs text-sidebar-foreground/50 space-y-1">
-          <p>2,288 chunks indexed · 13 documents</p>
+        <div className="text-[10px] text-sidebar-foreground/40 space-y-1 leading-relaxed">
+          <p className="font-medium text-sidebar-foreground/50">Free &amp; non-profit</p>
+          <p>Based on publicly available agricultural publications from FAO, USDA, INIA, Junta de Andalucía, University of Missouri and others.</p>
         </div>
 
         {/* Support link */}
