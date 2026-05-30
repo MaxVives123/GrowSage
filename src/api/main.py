@@ -16,11 +16,21 @@ def _cors_origins() -> list[str]:
     return [o.strip() for o in raw.split(",") if o.strip()]
 
 
+def _is_dev() -> bool:
+    return os.getenv("ENVIRONMENT", "production").lower() == "development"
+
+
 def create_app(db_url: str | None = None) -> FastAPI:
     engine = make_engine(db_url)
     Base.metadata.create_all(engine)
 
-    app = FastAPI(title="GrowSage API", version="2.0.0")
+    # Disable interactive docs in production — /docs and /redoc are public by default
+    app = FastAPI(
+        title="GrowSage API",
+        version="2.0.0",
+        docs_url="/docs" if _is_dev() else None,
+        redoc_url="/redoc" if _is_dev() else None,
+    )
 
     app.add_middleware(
         CORSMiddleware,
