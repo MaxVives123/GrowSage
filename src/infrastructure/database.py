@@ -28,7 +28,7 @@ class UsageORM(Base):
 
 
 def make_engine(db_url: str | None = None):
-    url = db_url or os.getenv("DATABASE_URL", "sqlite:///./sproutai.db")
+    url = db_url or os.getenv("DATABASE_URL", "sqlite:///./growsage.db")
     kwargs = {"check_same_thread": False} if url.startswith("sqlite") else {}
     return create_engine(url, connect_args=kwargs)
 

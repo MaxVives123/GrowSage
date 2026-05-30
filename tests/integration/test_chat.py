@@ -83,8 +83,8 @@ def test_chat_different_questions_return_different_answers(client, auth_headers)
 def test_rate_limit_blocks_excess_requests(client):
     """After N requests, the N+1th returns 429 without hitting OpenAI."""
     # Register a dedicated user so this test is isolated from auth_headers fixtures
-    client.post("/auth/register", json={"email": "ratelimit@sproutai.com", "password": "testpass123"})
-    res = client.post("/auth/login", json={"email": "ratelimit@sproutai.com", "password": "testpass123"})
+    client.post("/auth/register", json={"email": "ratelimit@growsage.com", "password": "testpass123"})
+    res = client.post("/auth/login", json={"email": "ratelimit@growsage.com", "password": "testpass123"})
     token = res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -102,15 +102,15 @@ def test_rate_limit_blocks_excess_requests(client):
 
 def test_rate_limit_is_per_user(client):
     """Exhausting one user's quota does not affect another user's independent counter."""
-    for email in ("rl_a@sproutai.com", "rl_b@sproutai.com"):
+    for email in ("rl_a@growsage.com", "rl_b@growsage.com"):
         client.post("/auth/register", json={"email": email, "password": "testpass123"})
 
     def _headers(email: str) -> dict:
         res = client.post("/auth/login", json={"email": email, "password": "testpass123"})
         return {"Authorization": f"Bearer {res.json()['access_token']}"}
 
-    headers_a = _headers("rl_a@sproutai.com")
-    headers_b = _headers("rl_b@sproutai.com")
+    headers_a = _headers("rl_a@growsage.com")
+    headers_b = _headers("rl_b@growsage.com")
 
     os.environ["DAILY_REQUEST_LIMIT"] = "1"
     try:

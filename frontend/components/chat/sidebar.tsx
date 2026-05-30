@@ -22,7 +22,7 @@ export function Sidebar({ onClose, onLogout }: SidebarProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <SproutIcon className="w-7 h-7 text-accent" />
-            <span className="text-lg font-bold text-sidebar-foreground">SproutAI</span>
+            <span className="text-lg font-bold text-sidebar-foreground">GrowSage</span>
           </div>
           {onClose && (
             <button 

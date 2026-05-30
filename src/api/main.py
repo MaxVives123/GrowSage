@@ -21,7 +21,7 @@ def create_app(db_url: str | None = None) -> FastAPI:
     engine = make_engine(db_url)
     Base.metadata.create_all(engine)
 
-    app = FastAPI(title="SproutAI API", version="2.0.0")
+    app = FastAPI(title="GrowSage API", version="2.0.0")
 
     app.add_middleware(
         CORSMiddleware,

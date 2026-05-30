@@ -36,7 +36,7 @@ export function ChatArea({
     <div className="flex-1 flex flex-col bg-background min-h-0">
       {/* Top Bar - Desktop only */}
       <header className="hidden lg:flex items-center justify-between px-6 py-3 border-b border-border">
-        <span className="text-sm text-muted-foreground">SproutAI</span>
+        <span className="text-sm text-muted-foreground">GrowSage</span>
         <Button 
           variant="outline" 
           size="sm" 

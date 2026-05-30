@@ -20,7 +20,7 @@ export function MobileHeader({ onMenuClick, onNewChat }: MobileHeaderProps) {
 
       <div className="flex items-center gap-2">
         <SproutIcon className="w-5 h-5 text-primary" />
-        <span className="font-semibold text-foreground">SproutAI</span>
+        <span className="font-semibold text-foreground">GrowSage</span>
       </div>
 
       <Button 

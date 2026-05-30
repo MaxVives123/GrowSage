@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'SproutAI - Your AI Garden Expert',
+  title: 'GrowSage - Your AI Garden Expert',
   description: 'Ask anything about your garden. Get expert answers grounded in FAO, INIA, and USDA manuals.',
   generator: 'v0.app',
   icons: {

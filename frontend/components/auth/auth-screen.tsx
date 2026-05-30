@@ -45,7 +45,7 @@ export function AuthScreen({ onLogin, onRegister }: AuthScreenProps) {
           <div className="w-14 h-14 rounded-2xl bg-[#0a1a0a] flex items-center justify-center mb-3 shadow-lg">
             <Leaf className="w-7 h-7 text-[#4ade80]" />
           </div>
-          <h1 className="text-2xl font-bold text-[#0a1a0a]">SproutAI</h1>
+          <h1 className="text-2xl font-bold text-[#0a1a0a]">GrowSage</h1>
           <p className="text-sm text-muted-foreground mt-1">Your AI garden expert</p>
         </div>
 

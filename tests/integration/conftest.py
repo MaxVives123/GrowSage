@@ -16,7 +16,7 @@ from src.api.main import create_app
 from src.api import deps
 from src.infrastructure.database import Base
 
-TEST_DB_URL = "sqlite:///./test_sproutai.db"
+TEST_DB_URL = "sqlite:///./test_growsage.db"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -32,8 +32,8 @@ def app():
     ChromaDB and OpenAI use real services.
     """
     # Clean up any leftover DB from previous runs
-    if os.path.exists("test_sproutai.db"):
-        os.remove("test_sproutai.db")
+    if os.path.exists("test_growsage.db"):
+        os.remove("test_growsage.db")
 
     engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
@@ -49,8 +49,8 @@ def app():
     Base.metadata.drop_all(engine)
     engine.dispose()
     try:
-        if os.path.exists("test_sproutai.db"):
-            os.remove("test_sproutai.db")
+        if os.path.exists("test_growsage.db"):
+            os.remove("test_growsage.db")
     except PermissionError:
         pass  # Windows: file still locked; cleanup on next run
 
@@ -65,11 +65,11 @@ def auth_headers(client):
     """Register a test user once and return its Bearer headers."""
     client.post(
         "/auth/register",
-        json={"email": "integration@sproutai.com", "password": "testpass123"},
+        json={"email": "integration@growsage.com", "password": "testpass123"},
     )
     res = client.post(
         "/auth/login",
-        json={"email": "integration@sproutai.com", "password": "testpass123"},
+        json={"email": "integration@growsage.com", "password": "testpass123"},
     )
     token = res.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
