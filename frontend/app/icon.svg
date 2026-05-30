@@ -1,0 +1,16 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark green rounded background -->
+  <rect width="180" height="180" rx="36" fill="#052e16"/>
+
+  <!-- Stem -->
+  <path d="M90 150 L90 86" stroke="#4ade80" stroke-width="11" stroke-linecap="round"/>
+
+  <!-- Left leaf -->
+  <path d="M90 108 C72 98 42 84 42 62 C42 40 70 36 90 80 Z" fill="#4ade80"/>
+
+  <!-- Right leaf (slightly darker for depth) -->
+  <path d="M90 94 C108 84 138 68 138 46 C138 26 110 24 90 70 Z" fill="#22c55e"/>
+
+  <!-- Central bud at top -->
+  <path d="M90 80 C86 66 85 50 90 38 C95 50 94 66 90 80 Z" fill="#4ade80"/>
+</svg>

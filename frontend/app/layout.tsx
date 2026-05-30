@@ -12,13 +12,6 @@ export const metadata: Metadata = {
   title: 'GrowSage - Your AI Garden Expert',
   description: 'Ask anything about your garden. Get expert answers grounded in FAO, INIA, and USDA manuals.',
   generator: 'v0.app',
-  icons: {
-    icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
-    shortcut: '/icon.svg',
-    apple: '/icon.svg',
-  },
 }
 
 export const viewport: Viewport = {
