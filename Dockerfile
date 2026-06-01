@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps first (layer cache)
+# Install Python runtime deps from requirements.txt (excludes test packages)
 COPY requirements.txt .
 RUN pip install --no-cache-dir \
     langchain==0.3.25 \
@@ -29,7 +29,8 @@ RUN pip install --no-cache-dir \
     "passlib[bcrypt]==1.7.4" \
     "bcrypt==4.0.1" \
     "python-jose[cryptography]==3.3.0" \
-    psycopg2-binary
+    psycopg2-binary \
+    redis
 
 COPY . .
 
