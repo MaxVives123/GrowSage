@@ -45,23 +45,24 @@ def create_app(db_url: str | None = None) -> FastAPI:
 
     @app.get("/health", tags=["meta"])
     def health():
-        from src.infrastructure.redis_store import _client
-        redis_status = "unavailable"
+        import redis as redis_lib
+        redis_url = os.getenv("REDIS_URL", "")
+        redis_status = "no url"
         cache_keys = 0
-        try:
-            r = _client()
-            if r:
+        if redis_url:
+            try:
+                r = redis_lib.from_url(redis_url, decode_responses=True, socket_connect_timeout=3)
                 r.ping()
                 cache_keys = len(r.keys("chat:*"))
                 redis_status = "ok"
-        except Exception as e:
-            redis_status = f"error: {e}"
+            except Exception as e:
+                redis_status = f"error: {type(e).__name__}: {str(e)[:120]}"
         return {
             "status": "ok",
             "version": "2.0.0",
             "redis": redis_status,
             "cache_keys": cache_keys,
-            "redis_url_set": bool(os.getenv("REDIS_URL")),
+            "redis_url_prefix": redis_url[:25] if redis_url else None,
         }
 
     return app
