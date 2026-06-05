@@ -17,6 +17,7 @@ class User:
     email: str
     hashed_password: str
     is_active: bool = True
+    email_verified: bool = False
     created_at: datetime = field(default_factory=datetime.utcnow)
 
 
@@ -122,6 +123,7 @@ class ChatResponse(BaseModel):
 class UserDTO(BaseModel):
     id: str
     email: str
+    email_verified: bool
     created_at: datetime
 
 

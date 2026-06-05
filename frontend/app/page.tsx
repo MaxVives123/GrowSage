@@ -13,9 +13,11 @@ import {
   apiGetConversationMessages,
   apiDeleteConversation,
   apiFeedback,
+  apiResendVerification,
+  getEmailVerifiedFromToken,
   type ConversationSummary,
 } from '@/lib/auth'
-import { Leaf } from 'lucide-react'
+import { Leaf, MailCheck, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 
@@ -36,11 +38,26 @@ export default function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
+  const [emailVerified, setEmailVerified] = useState(true)
+  const [verifiedParam, setVerifiedParam] = useState<string | null>(null)
+  const [resendSent, setResendSent] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Check email_verified from JWT and handle ?verified= redirect param
+  useEffect(() => {
+    setEmailVerified(getEmailVerifiedFromToken())
+    const params = new URLSearchParams(window.location.search)
+    const v = params.get('verified')
+    if (v) {
+      setVerifiedParam(v)
+      if (v === 'success') setEmailVerified(true)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [state])
 
   const loadConversations = useCallback(async () => {
     if (state !== 'authenticated') return
@@ -167,6 +184,11 @@ export default function ChatPage() {
         onSessionExpired()
         return
       }
+      if (err instanceof Error && err.message === 'UNVERIFIED_EMAIL') {
+        setEmailVerified(false)
+        setMessages(prev => prev.filter(m => m.id !== assistantId))
+        return
+      }
       const errMsg =
         err instanceof Error
           ? err.message
@@ -241,6 +263,43 @@ export default function ChatPage() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Email verification success banner */}
+        {verifiedParam === 'success' && (
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border-b border-green-200 text-green-800 text-sm">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>Email verified! You can now start chatting.</span>
+          </div>
+        )}
+
+        {/* Email verification error banner */}
+        {verifiedParam === 'error' && (
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border-b border-red-200 text-red-800 text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>Verification link is invalid or expired. Please request a new one below.</span>
+          </div>
+        )}
+
+        {/* Unverified email banner */}
+        {!emailVerified && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 border-b border-amber-200 text-amber-800 text-sm">
+            <div className="flex items-center gap-2">
+              <MailCheck className="w-4 h-4 shrink-0" />
+              <span>Please verify your email to start chatting. Check your inbox.</span>
+            </div>
+            <button
+              onClick={async () => {
+                await apiResendVerification()
+                setResendSent(true)
+              }}
+              disabled={resendSent}
+              className="shrink-0 text-xs font-medium underline disabled:opacity-50"
+            >
+              {resendSent ? 'Sent!' : 'Resend email'}
+            </button>
+          </div>
+        )}
+
         <MobileHeader
           onMenuClick={() => setIsSidebarOpen(true)}
           onNewChat={handleNewChat}

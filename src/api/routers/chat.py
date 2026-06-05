@@ -16,6 +16,14 @@ _DEFAULT_DAILY_LIMIT = 30
 _CACHE_CHUNK_SIZE = 40  # chars per simulated streaming token from cache
 
 
+def _check_verified(user: User) -> None:
+    if not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="UNVERIFIED_EMAIL",
+        )
+
+
 def _check_rate_limit(db: Session, user_id: str) -> None:
     limit = int(os.getenv("DAILY_REQUEST_LIMIT", _DEFAULT_DAILY_LIMIT))
     if not check_and_increment(db, user_id, limit):
@@ -33,6 +41,7 @@ def chat(
     db: Session = Depends(get_db),
 ):
     """Non-streaming endpoint — kept for backward compatibility and integration tests."""
+    _check_verified(current_user)
     _check_rate_limit(db, current_user.id)
     history = [h.model_dump() for h in body.history]
     try:
@@ -64,6 +73,7 @@ def chat_stream(
     Responses are cached in Redis for 24 h when history is empty (first message).
     Cache hits stream the stored answer in chunks — same UX, zero OpenAI cost.
     """
+    _check_verified(current_user)
     _check_rate_limit(db, current_user.id)
     history = [h.model_dump() for h in body.history]
     use_cache = not history  # only cache context-free questions

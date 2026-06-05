@@ -49,6 +49,52 @@ def check_ip_limit(
         return True  # graceful fallback
 
 
+# ── Email verification tokens ─────────────────────────────────────────────────
+
+def create_verification_token(user_id: str) -> str | None:
+    """Store a 24 h one-time verification token. Returns the token or None if Redis unavailable."""
+    import uuid
+    r = _client()
+    if r is None:
+        return None
+    try:
+        token = str(uuid.uuid4())
+        r.setex(f"verify:{token}", 60 * 60 * 24, user_id)
+        return token
+    except Exception:
+        return None
+
+
+def consume_verification_token(token: str) -> str | None:
+    """Validate token and return user_id (one-time use). Returns None if invalid/expired."""
+    r = _client()
+    if r is None:
+        return None
+    try:
+        key = f"verify:{token}"
+        user_id = r.get(key)
+        if user_id:
+            r.delete(key)
+        return user_id
+    except Exception:
+        return None
+
+
+def check_resend_limit(user_id: str, max_per_hour: int = 3) -> bool:
+    """Allow up to 3 resend attempts per user per hour."""
+    r = _client()
+    if r is None:
+        return True
+    try:
+        key = f"resend:verify:{user_id}"
+        count = r.incr(key)
+        if count == 1:
+            r.expire(key, 3600)
+        return int(count) <= max_per_hour
+    except Exception:
+        return True
+
+
 # ── Response cache ────────────────────────────────────────────────────────────
 
 _CACHE_TTL = 60 * 60 * 24  # 24 hours

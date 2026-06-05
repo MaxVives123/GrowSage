@@ -18,6 +18,7 @@ class UserORM(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    email_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -62,7 +63,13 @@ class FeedbackORM(Base):
 
 def make_engine(db_url: str | None = None):
     url = db_url or os.getenv("DATABASE_URL", "sqlite:///./growsage.db")
-    kwargs = {"check_same_thread": False} if url.startswith("sqlite") else {}
+    if url.startswith("sqlite"):
+        is_uri = "uri=true" in url or "mode=memory" in url
+        kwargs: dict = {"check_same_thread": False}
+        if is_uri:
+            kwargs["uri"] = True
+    else:
+        kwargs = {}
     return create_engine(url, connect_args=kwargs)
 
 

@@ -10,6 +10,22 @@ from src.infrastructure.database import make_engine, Base
 load_dotenv()
 
 
+def _init_sentry() -> None:
+    dsn = os.getenv("SENTRY_DSN", "")
+    if not dsn:
+        return
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=os.getenv("ENVIRONMENT", "production"),
+        traces_sample_rate=0.2,
+        integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+        send_default_pii=False,
+    )
+
+
 def _cors_origins() -> list[str]:
     """Read allowed origins from env — comma-separated for multi-domain."""
     raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
@@ -21,6 +37,7 @@ def _is_dev() -> bool:
 
 
 def create_app(db_url: str | None = None) -> FastAPI:
+    _init_sentry()
     engine = make_engine(db_url)
     Base.metadata.create_all(engine)
 

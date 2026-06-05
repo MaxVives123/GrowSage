@@ -1,14 +1,15 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from src.services.auth_service import AuthService
-from src.api.deps import get_auth_service
-from src.domain.models import RegisterRequest, LoginRequest, TokenResponse, UserDTO
+from src.api.deps import get_auth_service, get_current_user
+from src.domain.models import RegisterRequest, LoginRequest, TokenResponse, UserDTO, User
 from src.infrastructure.redis_store import check_ip_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _get_ip(request: Request) -> str:
-    """Extract real client IP, respecting X-Forwarded-For from Railway's proxy."""
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -31,7 +32,7 @@ def register(
         user = auth.register(body.email, body.password)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
-    return UserDTO(id=user.id, email=user.email, created_at=user.created_at)
+    return UserDTO(id=user.id, email=user.email, email_verified=user.email_verified, created_at=user.created_at)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -39,8 +40,31 @@ def login(body: LoginRequest, auth: AuthService = Depends(get_auth_service)):
     try:
         token = auth.login(body.email, body.password)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(exc),
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
     return TokenResponse(access_token=token)
+
+
+@router.get("/verify/{token}", tags=["auth"])
+def verify_email(token: str, auth: AuthService = Depends(get_auth_service)):
+    """Email verification link — called by clicking the link in the email."""
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    user = auth.verify_email(token)
+    if not user:
+        return RedirectResponse(f"{frontend_url}?verified=error", status_code=302)
+    return RedirectResponse(f"{frontend_url}?verified=success", status_code=302)
+
+
+@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+def resend_verification(
+    current_user: User = Depends(get_current_user),
+    auth: AuthService = Depends(get_auth_service),
+):
+    """Resend the verification email (max 3 times per hour)."""
+    if current_user.email_verified:
+        return  # already verified, nothing to do
+    ok = auth.resend_verification(current_user)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many resend attempts. Please wait 1 hour.",
+        )

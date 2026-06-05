@@ -30,7 +30,9 @@ RUN pip install --no-cache-dir \
     "bcrypt==4.0.1" \
     "python-jose[cryptography]==3.3.0" \
     psycopg2-binary \
-    redis
+    redis \
+    resend \
+    "sentry-sdk[fastapi]==2.22.0"
 
 COPY . .
 

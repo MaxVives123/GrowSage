@@ -16,26 +16,27 @@ from src.api.main import create_app
 from src.api import deps
 from src.infrastructure.database import Base
 
-TEST_DB_URL = "sqlite:///./test_growsage.db"
+# Named shared-memory DB — all connections in this process share the same DB
+TEST_DB_URL = "sqlite:///file:growsage_test?mode=memory&cache=shared&uri=true"
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _set_env():
-    """Ensure SECRET_KEY is set for tests."""
+    """Ensure SECRET_KEY is set for tests and email verification is auto-approved."""
     os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
+    os.environ.setdefault("AUTO_VERIFY_EMAIL", "true")
 
 
 @pytest.fixture(scope="session")
 def app():
     """
-    FastAPI app wired to an isolated SQLite test database.
+    FastAPI app wired to an isolated in-memory SQLite test database.
     ChromaDB and OpenAI use real services.
     """
-    # Clean up any leftover DB from previous runs
-    if os.path.exists("test_growsage.db"):
-        os.remove("test_growsage.db")
-
-    engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+    engine = create_engine(
+        TEST_DB_URL,
+        connect_args={"check_same_thread": False, "uri": True},
+    )
     Base.metadata.create_all(engine)
     TestFactory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -45,14 +46,8 @@ def app():
     application = create_app(db_url=TEST_DB_URL)
     yield application
 
-    # Teardown — dispose connections before removing file (Windows file locking)
     Base.metadata.drop_all(engine)
     engine.dispose()
-    try:
-        if os.path.exists("test_growsage.db"):
-            os.remove("test_growsage.db")
-    except PermissionError:
-        pass  # Windows: file still locked; cleanup on next run
 
 
 @pytest.fixture(scope="session")

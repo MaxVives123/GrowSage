@@ -71,6 +71,8 @@ export async function* apiChatStream(
   })
 
   if (res.status === 401 || res.status === 403) {
+    const err = await res.json().catch(() => ({}))
+    if (err.detail === 'UNVERIFIED_EMAIL') throw new Error('UNVERIFIED_EMAIL')
     clearToken()
     throw new Error('SESSION_EXPIRED')
   }
@@ -135,6 +137,24 @@ export async function apiGetConversationMessages(convId: string): Promise<Conver
 
 export async function apiDeleteConversation(convId: string): Promise<void> {
   await fetch(`${API}/conversations/${convId}`, { method: 'DELETE', headers: authHeaders() })
+}
+
+export async function apiResendVerification(): Promise<void> {
+  await fetch(`${API}/auth/resend-verification`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
+}
+
+export function getEmailVerifiedFromToken(): boolean {
+  const token = getToken()
+  if (!token) return true
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.email_verified ?? true
+  } catch {
+    return true
+  }
 }
 
 export async function apiFeedback(messageId: string, rating: 1 | -1): Promise<void> {

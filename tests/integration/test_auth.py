@@ -119,3 +119,62 @@ def test_health_endpoint(client):
     res = client.get("/health")
     assert res.status_code == 200
     assert res.json()["status"] == "ok"
+
+
+def test_register_returns_email_verified_false_without_auto_verify(client):
+    """When AUTO_VERIFY_EMAIL is off, registration returns email_verified=False."""
+    import os
+    old = os.environ.get("AUTO_VERIFY_EMAIL")
+    os.environ["AUTO_VERIFY_EMAIL"] = "false"
+    try:
+        res = client.post(
+            "/auth/register",
+            json={"email": "notauto@growsage.com", "password": "testpass123"},
+        )
+        assert res.status_code == 201
+        assert res.json()["email_verified"] is False
+    finally:
+        if old is not None:
+            os.environ["AUTO_VERIFY_EMAIL"] = old
+        else:
+            os.environ["AUTO_VERIFY_EMAIL"] = "true"
+
+
+def test_auto_verified_user_has_email_verified_true(client):
+    """With AUTO_VERIFY_EMAIL=true (set in conftest), registration auto-verifies."""
+    res = client.post(
+        "/auth/register",
+        json={"email": "autoverified@growsage.com", "password": "testpass123"},
+    )
+    assert res.status_code == 201
+    assert res.json()["email_verified"] is True
+
+
+def test_unverified_user_cannot_chat(client):
+    """Unverified users get 403 UNVERIFIED_EMAIL when trying to chat."""
+    # Register and then manually mark as unverified in the DB
+    client.post("/auth/register", json={"email": "willblock@growsage.com", "password": "testpass123"})
+
+    from src.infrastructure.database import UserORM
+    from src.api import deps
+    db = deps.get_session_factory()()
+    try:
+        user = db.query(UserORM).filter(UserORM.email == "willblock@growsage.com").first()
+        if user:
+            user.email_verified = False
+            db.commit()
+    finally:
+        db.close()
+
+    login = client.post("/auth/login", json={"email": "willblock@growsage.com", "password": "testpass123"})
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    res = client.post("/chat", json={"question": "test"}, headers=headers)
+    assert res.status_code == 403
+    assert res.json()["detail"] == "UNVERIFIED_EMAIL"
+
+
+def test_verify_email_with_invalid_token_returns_redirect(client):
+    """Invalid tokens redirect to frontend with ?verified=error."""
+    res = client.get("/auth/verify/invalid-token-xyz", follow_redirects=False)
+    assert res.status_code == 302
+    assert "verified=error" in res.headers["location"]
