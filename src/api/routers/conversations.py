@@ -60,4 +60,7 @@ def submit_feedback(
     current_user: User = Depends(get_current_user),
     svc: ConversationService = Depends(get_conv_service),
 ):
-    svc.add_feedback(message_id=message_id, user_id=current_user.id, rating=body.rating)
+    try:
+        svc.add_feedback(message_id=message_id, user_id=current_user.id, rating=body.rating)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")

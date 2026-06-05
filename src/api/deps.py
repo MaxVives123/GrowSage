@@ -35,7 +35,7 @@ def get_db() -> Session:
 
 
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
-    return AuthService(user_repo=SQLUserRepository(db))
+    return AuthService(user_repo=SQLUserRepository(db), db=db)
 
 
 def get_chat_service() -> ChatService:
@@ -57,7 +57,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
     db: Session = Depends(get_db),
 ) -> User:
-    auth = AuthService(user_repo=SQLUserRepository(db))
+    auth = AuthService(user_repo=SQLUserRepository(db), db=db)
     user = auth.get_user_from_token(credentials.credentials)
     if not user or not user.is_active:
         raise HTTPException(

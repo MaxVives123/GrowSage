@@ -2,8 +2,9 @@
 from __future__ import annotations
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from src.api.routers import auth, chat, conversations
 from src.infrastructure.database import make_engine, Base
 
@@ -55,6 +56,18 @@ def create_app(db_url: str | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    _MAX_BODY_BYTES = 64 * 1024  # 64 KB — generous for chat, blocks payload attacks
+
+    @app.middleware("http")
+    async def limit_body_size(request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > _MAX_BODY_BYTES:
+            return JSONResponse(
+                status_code=413,
+                content={"detail": "Request body too large"},
+            )
+        return await call_next(request)
 
     app.include_router(auth.router)
     app.include_router(chat.router)

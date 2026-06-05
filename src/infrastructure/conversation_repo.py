@@ -83,6 +83,14 @@ class SQLConversationRepository(IConversationRepository):
         return [self._msg(r) for r in rows]
 
     def add_feedback(self, message_id: str, user_id: str, rating: int) -> None:
+        # Verify the message belongs to a conversation owned by this user
+        msg = self._db.get(MessageORM, message_id)
+        if not msg:
+            raise ValueError("Message not found")
+        conv = self._db.get(ConversationORM, msg.conversation_id)
+        if not conv or conv.user_id != user_id:
+            raise ValueError("Message not found")
+
         existing = (
             self._db.query(FeedbackORM)
             .filter(FeedbackORM.message_id == message_id, FeedbackORM.user_id == user_id)

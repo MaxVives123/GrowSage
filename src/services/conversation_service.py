@@ -42,4 +42,5 @@ class ConversationService:
         return self._repo.get_messages(conversation_id)
 
     def add_feedback(self, message_id: str, user_id: str, rating: int) -> None:
+        # ValueError propagates to router if message not found or not owned by user
         self._repo.add_feedback(message_id=message_id, user_id=user_id, rating=rating)

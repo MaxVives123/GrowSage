@@ -30,6 +30,7 @@ def check_ip_limit(
     ip: str,
     max_attempts: int = 5,
     window_seconds: int = 3600,
+    key_prefix: str = "register",
 ) -> bool:
     """Return True if the IP is within the allowed limit, False if blocked.
 
@@ -40,7 +41,7 @@ def check_ip_limit(
     if r is None:
         return True  # graceful fallback
     try:
-        key = f"register:ip:{ip}"
+        key = f"{key_prefix}:ip:{ip}"
         count = r.incr(key)
         if count == 1:
             r.expire(key, window_seconds)

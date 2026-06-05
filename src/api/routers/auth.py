@@ -36,7 +36,17 @@ def register(
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest, auth: AuthService = Depends(get_auth_service)):
+def login(
+    body: LoginRequest,
+    request: Request,
+    auth: AuthService = Depends(get_auth_service),
+):
+    ip = _get_ip(request)
+    if not check_ip_limit(ip, max_attempts=10, window_seconds=900, key_prefix="login"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts from this IP. Try again in 15 minutes.",
+        )
     try:
         token = auth.login(body.email, body.password)
     except ValueError as exc:

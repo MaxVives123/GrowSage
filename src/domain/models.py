@@ -92,9 +92,21 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+_MAX_QUESTION_LEN = 2000    # ~500 tokens
+_MAX_HISTORY_TURNS = 20     # 20 exchanges = 40 messages
+_MAX_HISTORY_MSG_LEN = 4000 # per message in history
+
+
 class HistoryMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
+
+    @field_validator("content")
+    @classmethod
+    def content_not_too_long(cls, v: str) -> str:
+        if len(v) > _MAX_HISTORY_MSG_LEN:
+            raise ValueError(f"History message too long (max {_MAX_HISTORY_MSG_LEN} chars)")
+        return v
 
 
 class ChatRequest(BaseModel):
@@ -107,6 +119,15 @@ class ChatRequest(BaseModel):
     def question_not_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Question cannot be empty")
+        if len(v) > _MAX_QUESTION_LEN:
+            raise ValueError(f"Question too long (max {_MAX_QUESTION_LEN} chars)")
+        return v
+
+    @field_validator("history")
+    @classmethod
+    def history_not_too_long(cls, v: list) -> list:
+        if len(v) > _MAX_HISTORY_TURNS:
+            raise ValueError(f"History too long (max {_MAX_HISTORY_TURNS} messages)")
         return v
 
 

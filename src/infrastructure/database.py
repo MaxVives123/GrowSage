@@ -4,7 +4,7 @@ import os
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Boolean, DateTime, Integer, ForeignKey, Text, create_engine
+    Column, String, Boolean, DateTime, Integer, ForeignKey, Text, create_engine, Index
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
@@ -59,6 +59,17 @@ class FeedbackORM(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     rating = Column(Integer, nullable=False)    # 1 or -1
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EmailVerificationTokenORM(Base):
+    """DB fallback for email verification tokens when Redis is unavailable."""
+    __tablename__ = "email_verification_tokens"
+
+    token = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+
+    __table_args__ = (Index("ix_evt_user_id", "user_id"),)
 
 
 def make_engine(db_url: str | None = None):
