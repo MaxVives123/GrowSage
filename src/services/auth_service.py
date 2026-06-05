@@ -114,12 +114,16 @@ class AuthService:
         """Returns a JWT access token or raises ValueError."""
         email = email.strip().lower()
         user = self._repo.get_by_email(email)
+        # Use generic message to prevent account enumeration.
+        # Always run bcrypt verify to prevent timing attacks.
+        _DUMMY_HASH = "$2b$12$KIXHWtbAFj7BRFpvCwBXVuwMCdJ3rj9iq3CfrBO.KhAAWCEY0F4CO"
         if not user:
-            raise ValueError("No account found with that email")
+            _pwd_ctx.verify("dummy", _DUMMY_HASH)  # constant-time dummy check
+            raise ValueError("Invalid email or password")
         if not _pwd_ctx.verify(password, user.hashed_password):
-            raise ValueError("Incorrect password")
+            raise ValueError("Invalid email or password")
         if not user.is_active:
-            raise ValueError("This account has been disabled")
+            raise ValueError("Invalid email or password")
         return self._issue_token(user)
 
     def get_user_from_token(self, token: str) -> User | None:

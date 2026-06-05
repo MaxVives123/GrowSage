@@ -1,7 +1,15 @@
 """FastAPI application factory."""
 from __future__ import annotations
+import logging
 import os
 from dotenv import load_dotenv
+
+# Structured security logger — one line per security event, easy to grep/ship to SIEM
+security_log = logging.getLogger("growsage.security")
+logging.basicConfig(
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    level=logging.INFO,
+)
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -53,8 +61,9 @@ def create_app(db_url: str | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_cors_origins(),
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
+        expose_headers=["X-Request-ID"],
     )
 
     _MAX_BODY_BYTES = 64 * 1024  # 64 KB — generous for chat, blocks payload attacks
@@ -68,6 +77,19 @@ def create_app(db_url: str | None = None) -> FastAPI:
                 content={"detail": "Request body too large"},
             )
         return await call_next(request)
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        # Only send HSTS in production (Railway handles TLS termination)
+        if not _is_dev():
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
 
     app.include_router(auth.router)
     app.include_router(chat.router)

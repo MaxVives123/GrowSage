@@ -1,3 +1,4 @@
+import logging
 import os
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
@@ -5,6 +6,8 @@ from src.services.auth_service import AuthService
 from src.api.deps import get_auth_service, get_current_user
 from src.domain.models import RegisterRequest, LoginRequest, TokenResponse, UserDTO, User
 from src.infrastructure.redis_store import check_ip_limit
+
+_log = logging.getLogger("growsage.security")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -24,13 +27,16 @@ def register(
 ):
     ip = _get_ip(request)
     if not check_ip_limit(ip, max_attempts=5, window_seconds=3600):
+        _log.warning("REGISTER_RATE_LIMITED ip=%s", ip)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many registration attempts from this IP. Try again in 1 hour.",
         )
     try:
         user = auth.register(body.email, body.password)
+        _log.info("REGISTER_OK email=%s ip=%s", user.email, ip)
     except ValueError as exc:
+        _log.warning("REGISTER_CONFLICT email=%s ip=%s", body.email, ip)
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     return UserDTO(id=user.id, email=user.email, email_verified=user.email_verified, created_at=user.created_at)
 
@@ -43,14 +49,20 @@ def login(
 ):
     ip = _get_ip(request)
     if not check_ip_limit(ip, max_attempts=10, window_seconds=900, key_prefix="login"):
+        _log.warning("LOGIN_RATE_LIMITED ip=%s email=%s", ip, body.email)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many login attempts from this IP. Try again in 15 minutes.",
         )
     try:
         token = auth.login(body.email, body.password)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
+        _log.info("LOGIN_OK email=%s ip=%s", body.email, ip)
+    except ValueError:
+        _log.warning("LOGIN_FAILED email=%s ip=%s", body.email, ip)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
     return TokenResponse(access_token=token)
 
 

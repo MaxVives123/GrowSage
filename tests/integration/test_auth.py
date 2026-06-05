@@ -103,7 +103,7 @@ def test_login_wrong_password_returns_401_with_message(client):
         json={"email": "dave@growsage.com", "password": "wrongpassword"},
     )
     assert res.status_code == 401
-    assert "password" in res.json()["detail"].lower()
+    assert "invalid" in res.json()["detail"].lower()
 
 
 def test_login_unknown_email_returns_401_with_message(client):
@@ -112,7 +112,8 @@ def test_login_unknown_email_returns_401_with_message(client):
         json={"email": "nobody@growsage.com", "password": "doesntmatter"},
     )
     assert res.status_code == 401
-    assert "account" in res.json()["detail"].lower()
+    # Generic message — does not reveal whether the email exists (anti-enumeration)
+    assert "invalid" in res.json()["detail"].lower()
 
 
 def test_health_endpoint(client):

@@ -1,6 +1,9 @@
 import json
+import logging
 import os
 from fastapi import APIRouter, Depends, HTTPException, status
+
+_log = logging.getLogger("growsage.security")
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from src.services.chat_service import ChatService
@@ -27,6 +30,7 @@ def _check_verified(user: User) -> None:
 def _check_rate_limit(db: Session, user_id: str) -> None:
     limit = int(os.getenv("DAILY_REQUEST_LIMIT", _DEFAULT_DAILY_LIMIT))
     if not check_and_increment(db, user_id, limit):
+        _log.warning("DAILY_LIMIT_REACHED user_id=%s", user_id)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Daily limit of {limit} messages reached. Try again tomorrow.",
@@ -75,8 +79,6 @@ def chat_stream(
     """
     _check_verified(current_user)
     _check_rate_limit(db, current_user.id)
-    history = [h.model_dump() for h in body.history]
-    use_cache = not history  # only cache context-free questions
 
     # Resolve or create conversation
     conversation_id = body.conversation_id
@@ -89,6 +91,16 @@ def chat_stream(
         conversation_id = conv.id
 
     conv_svc.add_message(conversation_id=conversation_id, role="user", content=body.question)
+
+    # Reconstruct history from DB — never trust client-supplied history.
+    # Ignore body.history to prevent prompt injection via fabricated context.
+    db_messages = conv_svc.get_messages(conversation_id, current_user.id)
+    # Exclude the message we just added (last one) — it's the current question
+    history = [
+        {"role": m.role, "content": m.content}
+        for m in db_messages[:-1]
+    ]
+    use_cache = not history  # only cache context-free questions (new conversation)
 
     def generate():
         try:
@@ -135,7 +147,11 @@ def chat_stream(
                 cache_response(body.question, full_content, sources_dto)
 
         except RuntimeError as exc:
-            yield f"data: {json.dumps({'type': 'error', 'detail': str(exc)})}\n\n"
+            # RuntimeError messages are app-controlled (OpenAI quota, service error)
+            # Strip anything that could leak internal details beyond known safe messages
+            msg = str(exc)
+            safe = msg if msg.startswith(("OpenAI", "Daily limit")) else "Service temporarily unavailable"
+            yield f"data: {json.dumps({'type': 'error', 'detail': safe})}\n\n"
         except Exception:
             yield f"data: {json.dumps({'type': 'error', 'detail': 'An unexpected error occurred'})}\n\n"
 
